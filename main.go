@@ -5,14 +5,15 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sync"
 
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 )
 
 type Product struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
+	ID    string  `json:"id"`
+	Name  string  `json:"name"`
 	Price float64 `json:"price"`
 }
 
@@ -31,6 +32,12 @@ var products []Product
 var users []User
 var transactions []Transaction
 
+var (
+	productsCache     []byte
+	productsCacheLock sync.RWMutex
+	productsDirty     = true
+)
+
 func initEnv() {
 	if err := godotenv.Load(); err != nil {
 		log.Print("No .env file found")
@@ -39,7 +46,24 @@ func initEnv() {
 
 func getProducts(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(products)
+	productsCacheLock.RLock()
+	if productsDirty {
+		productsCacheLock.RUnlock()
+		productsCacheLock.Lock()
+		if productsDirty {
+			var err error
+			productsCache, err = json.Marshal(products)
+			if err != nil {
+				http.Error(w, "Failed to encode products", http.StatusInternalServerError)
+				return
+			}
+			productsDirty = false
+		}
+		productsCacheLock.Unlock()
+		productsCacheLock.RLock()
+	}
+	w.Write(productsCache)
+	productsCacheLock.RUnlock()
 }
 
 func getUser(w http.ResponseWriter, r *http.Request) {
@@ -68,7 +92,9 @@ func createTransaction(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
 	transactions = append(transactions, transaction)
+	productsDirty = true
 	json.NewEncoder(w).Encode(transaction)
 }
 
