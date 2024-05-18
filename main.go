@@ -33,40 +33,40 @@ var users []User
 var transactions []Transaction
 
 var (
-	productsCache     []byte
-	productsCacheLock sync.RWMutex
-	productsDirty     = true
+	productCache     []byte
+	productCacheLock sync.RWMutex
+	cacheNeedsUpdate = true
 )
 
-func initEnv() {
+func LoadEnvironmentVariables() {
 	if err := godotenv.Load(); err != nil {
 		log.Print("No .env file found")
 	}
 }
 
-func getProducts(w http.ResponseWriter, r *http.Request) {
+func HandleGetProducts(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	productsCacheLock.RLock()
-	if productsDirty {
-		productsCacheLock.RUnlock()
-		productsCacheLock.Lock()
-		if productsDirty {
+	productCacheLock.RLock()
+	if cacheNeedsUpdate {
+		productCacheLock.RUnlock()
+		productCacheLock.Lock()
+		if cacheNeedsUpdate {
 			var err error
-			productsCache, err = json.Marshal(products)
+			productCache, err = json.Marshal(products)
 			if err != nil {
 				http.Error(w, "Failed to encode products", http.StatusInternalServerError)
 				return
 			}
-			productsDirty = false
+			cacheNeedsUpdate = false
 		}
-		productsCacheLock.Unlock()
-		productsCacheLock.RLock()
+		productCacheLock.Unlock()
+		productCacheLock.RLock()
 	}
-	w.Write(productsCache)
-	productsCacheLock.RUnlock()
+	w.Write(productCache)
+	productCacheLock.RUnlock()
 }
 
-func getUser(w http.ResponseWriter, r *http.Request) {
+func HandleGetUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(r)
 	username, ok := vars["username"]
@@ -85,7 +85,7 @@ func getUser(w http.ResponseWriter, r *http.Request) {
 	http.NotFound(w, r)
 }
 
-func createTransaction(w http.ResponseWriter, r *http.Request) {
+func HandleCreateTransaction(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	var transaction Transaction
 	if err := json.NewDecoder(r.Body).Decode(&transaction); err != nil {
@@ -94,11 +94,11 @@ func createTransaction(w http.ResponseWriter, r *http.Request) {
 	}
 
 	transactions = append(transactions, transaction)
-	productsDirty = true
+	cacheNeedsUpdate = true
 	json.NewEncoder(w).Encode(transaction)
 }
 
-func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
+func WithAuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != os.Getenv("API_KEY") {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -109,15 +109,15 @@ func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 }
 
 func main() {
-	initEnv()
+	LoadEnvironmentVariables()
 
 	router := mux.NewRouter()
 
-	router.HandleFunc("/api/products", getProducts).Methods("GET")
-	router.HandleFunc("/api/user/{username}", getUser).Methods("GET")
-	router.HandleFunc("/api/transaction", createTransaction).Methods("POST")
+	router.HandleFunc("/api/products", HandleGetProducts).Methods("GET")
+	router.HandleFunc("/api/user/{username}", HandleGetUser).Methods("GET")
+	router.HandleFunc("/api/transaction", HandleCreateTransaction).Methods("POST")
 
-	router.Use(authMiddleware)
+	router.Use(WithAuthMiddleware)
 
 	log.Fatal(http.ListenAndServe(":8080", router))
 }
