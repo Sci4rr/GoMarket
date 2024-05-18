@@ -1,96 +1,96 @@
 import React, { useEffect, useState } from 'react';
 
-interface Product {
+interface IProduct {
   id: number;
   name: string;
   category: string;
   price: number;
 }
 
-interface Category {
+interface ICategory {
   name: string;
 }
 
 const ProductList: React.FC = () => {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
-  const [sortOption, setSortOption] = useState('');
+  const [allProducts, setAllProducts] = useState<IProduct[]>([]);
+  const [categoryList, setCategoryList] = useState<ICategory[]>([]);
+  const [displayedProducts, setDisplayedProducts] = useState<IProduct[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentCategory, setCurrentCategory] = useState('All');
+  const [sortCriteria, setSortCriteria] = useState('');
 
   useEffect(() => {
-    const fetchedProducts: Product[] = [
+    const sampleProducts: IProduct[] = [
       { id: 1, name: 'Laptop', category: 'Electronics', price: 1000 },
       { id: 2, name: 'Shirt', category: 'Clothing', price: 50 },
     ];
-    setProducts(fetchedProducts);
-    setFilteredProducts(fetchedProducts);
+    setAllProducts(sampleProducts);
+    setDisplayedProducts(sampleProducts);
 
-    const fetchedCategories: Category[] = [
+    const sampleCategories: ICategory[] = [
       { name: 'All' },
       { name: 'Electronics' },
       { name: 'Clothing' },
     ];
-    setCategories(fetchedCategories);
+    setCategoryList(sampleCategories);
   }, []);
 
   useEffect(() => {
-    let result = [...products];
+    let filtered = [...allProducts];
 
-    if (selectedCategory !== 'All') {
-      result = result.filter(product => product.category === selectedCategory);
+    if (currentCategory !== 'All') {
+      filtered = filtered.filter(product => product.category === currentCategory);
     }
 
-    if (searchTerm) {
-      result = result.filter(product =>
-        product.name.toLowerCase().includes(searchTerm.toLowerCase())
+    if (searchQuery) {
+      filtered = filtered.filter(product =>
+        product.name.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
-    switch (sortOption) {
+    switch (sortCriteria) {
       case 'priceLowHigh':
-        result.sort((a, b) => a.price - b.price);
+        filtered.sort((a, b) => a.price - b.price);
         break;
       case 'priceHighLow':
-        result.sort((a, b) => b.price - a.price);
+        filtered.sort((a, b) => b.price - a.price);
         break;
       default:
         break;
     }
 
-    setFilteredProducts(result);
-  }, [searchTerm, selectedCategory, sortOption, products]);
+    setDisplayedProducts(filtered);
+  }, [searchQuery, currentCategory, sortCriteria, allProducts]);
 
-  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(event.target.value);
+  const handleSearchInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(event.target.value);
   };
 
-  const handleCategoryChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedCategory(event.target.value);
+  const handleCategorySelectionChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    setCurrentCategory(event.target.value);
   };
 
-  const handleSortChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    setSortOption(event.target.value);
+  const handleSortingOptionChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    setSortCriteria(event.target.value);
   };
 
   return (
     <div>
-      <input type="text" placeholder="Search products..." onChange={handleSearchChange} value={searchTerm} />
-      <select onChange={handleCategoryChange} value={selectedCategory}>
-        {categories.map(category => (
+      <input type="text" placeholder="Search products..." onChange={handleSearchInputChange} value={searchQuery} />
+      <select onChange={handleCategorySelectionChange} value={currentCategory}>
+        {categoryList.map(category => (
           <option key={category.name} value={category.name}>
             {category.name}
           </option>
         ))}
       </select>
-      <select onChange={handleSortChange} value={sortOption}>
+      <select onChange={handleSortingOptionChange} value={sortCriteria}>
         <option value="">Select Sorting Option</option>
         <option value="priceLowHigh">Price: Low to High</option>
         <option value="priceHighLow">Price: High to Low</option>
       </select>
       <ul>
-        {filteredProducts.map(product => (
+        {displayedProducts.map(product => (
           <li key={product.id}>{`${product.name} - ${product.category} - $${product.price}`}</li>
         ))}
       </ul>
