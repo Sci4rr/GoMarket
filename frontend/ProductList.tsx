@@ -20,19 +20,15 @@ const ProductList: React.FC = () => {
   const [sortCriteria, setSortCriteria] = useState('');
 
   useEffect(() => {
-    const sampleProducts: IProduct[] = [
-      { id: 1, name: 'Laptop', category: 'Electronics', price: 1000 },
-      { id: 2, name: 'Shirt', category: 'Clothing', price: 50 },
-    ];
-    setAllProducts(sampleProducts);
-    setDisplayedProducts(sampleProducts);
+    async function fetchData() {
+      const { products, categories } = await fetchAllData();
+      setAllProducts(products);
+      setDisplayedProducts(products);
+      const allCategories = [{ name: 'All' }, ...categories];
+      setCategoryList(allCategories);
+    }
 
-    const sampleCategories: ICategory[] = [
-      { name: 'All' },
-      { name: 'Electronics' },
-      { name: 'Clothing' },
-    ];
-    setCategoryList(sampleCategories);
+    fetchData();
   }, []);
 
   useEffect(() => {
@@ -99,3 +95,20 @@ const ProductList: React.FC = () => {
 };
 
 export default ProductList;
+
+async function fetchAllData(): Promise<{ products: IProduct[], categories: ICategory[] }> {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({
+        products: [
+          { id: 1, name: 'Laptop', category: 'Electronics', price: 1000 },
+          { id: 2, name: 'Shirt', category: 'Clothing', price: 50 },
+        ],
+        categories: [
+          { name: 'Electronics' },
+          { name: 'Clothing' },
+        ],
+      });
+    }, 1000);
+  });
+}
