@@ -1,92 +1,92 @@
 import React, { useEffect, useState } from 'react';
 
-interface IProduct {
+interface Product {
   id: number;
   name: string;
   category: string;
   price: number;
 }
 
-interface ICategory {
+interface Category {
   name: string;
 }
 
 const ProductList: React.FC = () => {
-  const [allProducts, setAllProducts] = useState<IProduct[]>([]);
-  const [categoryList, setCategoryList] = useState<ICategory[]>([]);
-  const [displayedProducts, setDisplayedProducts] = useState<IProduct[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [currentCategory, setCurrentCategory] = useState('All');
-  const [sortCriteria, setSortCriteria] = useState('');
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [sortingMethod, setSortingMethod] = useState('');
 
   useEffect(() => {
-    async function fetchData() {
-      const { products, categories } = await fetchAllData();
-      setAllProducts(products);
-      setDisplayedProducts(products);
-      const allCategories = [{ name: 'All' }, ...categories];
-      setCategoryList(allCategories);
+    async function loadProductData() {
+      const { products, categories } = await fetchData();
+      setProducts(products);
+      setFilteredProducts(products);
+      const allCategoriesOption = [{ name: 'All' }, ...categories];
+      setCategories(allCategoriesOption);
     }
 
-    fetchData();
+    loadProductData();
   }, []);
 
   useEffect(() => {
-    let filtered = [...allProducts];
+    let productsToDisplay = [...products];
 
-    if (currentCategory !== 'All') {
-      filtered = filtered.filter(product => product.category === currentCategory);
+    if (selectedCategory !== 'All') {
+      productsToDisplay = productsToDisplay.filter(product => product.category === selectedCategory);
     }
 
-    if (searchQuery) {
-      filtered = filtered.filter(product =>
-        product.name.toLowerCase().includes(searchQuery.toLowerCase())
+    if (searchTerm) {
+      productsToDisplay = productsToDisplay.filter(product =>
+        product.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
-    switch (sortCriteria) {
+    switch (sortingMethod) {
       case 'priceLowHigh':
-        filtered.sort((a, b) => a.price - b.price);
+        productsToDisplay.sort((a, b) => a.price - b.price);
         break;
       case 'priceHighLow':
-        filtered.sort((a, b) => b.price - a.price);
+        productsToDisplay.sort((a, b) => b.price - a.price);
         break;
       default:
         break;
     }
 
-    setDisplayedProducts(filtered);
-  }, [searchQuery, currentCategory, sortCriteria, allProducts]);
+    setFilteredProducts(productsToDisplay);
+  }, [searchTerm, selectedCategory, sortingMethod, products]);
 
-  const handleSearchInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(event.target.value);
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(event.target.value);
   };
 
-  const handleCategorySelectionChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    setCurrentCategory(event.target.value);
+  const handleCategoryChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedCategory(event.target.value);
   };
 
-  const handleSortingOptionChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    setSortCriteria(event.target.value);
+  const handleSortChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    setSortingMethod(event.target.value);
   };
 
   return (
     <div>
-      <input type="text" placeholder="Search products..." onChange={handleSearchInputChange} value={searchQuery} />
-      <select onChange={handleCategorySelectionChange} value={currentCategory}>
-        {categoryList.map(category => (
+      <input type="text" placeholder="Search products..." onChange={handleSearchChange} value={searchTerm} />
+      <select onChange={handleCategoryChange} value={selectedCategory}>
+        {categories.map(category => (
           <option key={category.name} value={category.name}>
             {category.name}
           </option>
         ))}
       </select>
-      <select onChange={handleSortingOptionChange} value={sortCriteria}>
+      <select onChange={handleSortChange} value={sortingMethod}>
         <option value="">Select Sorting Option</option>
         <option value="priceLowHigh">Price: Low to High</option>
         <option value="priceHighLow">Price: High to Low</option>
       </select>
       <ul>
-        {displayedProducts.map(product => (
+        {filteredProducts.map(product => (
           <li key={product.id}>{`${product.name} - ${product.category} - $${product.price}`}</li>
         ))}
       </ul>
@@ -96,7 +96,7 @@ const ProductList: React.FC = () => {
 
 export default ProductList;
 
-async function fetchAllData(): Promise<{ products: IProduct[], categories: ICategory[] }> {
+async function fetchData(): Promise<{ products: Product[], categories: Category[] }> {
   return new Promise((resolve) => {
     setTimeout(() => {
       resolve({
