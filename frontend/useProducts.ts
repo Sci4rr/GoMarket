@@ -26,7 +26,7 @@ const useProducts = ({ initialSearch, initialSort, initialFilters }: UseProductO
   const fetchProducts = async (search: string, sort: string, filters: Record<string, string>) => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const queryParams = new URLSearchParams();
       queryParams.append('search', search);
@@ -35,8 +35,25 @@ const useProducts = ({ initialSearch, initialSort, initialFilters }: UseProductO
 
       const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/products?${queryParams}`);
       setProducts(response.data);
-    } catch (err: any) {
-      setError(err.message || 'An error occurred');
+    } catch (err) {
+      // Enhanced error handling
+      if (axios.isAxiosError(err)) {
+        // Error returned from axios request
+        if (err.response) {
+          // The request was made and the server responded with a status code
+          // that falls out of the range of 2xx
+          setError(`Server responded with status code ${err.response.status}: ${err.message}`);
+        } else if (err.request) {
+          // The request was made but no response was received
+          setError("The request was made but no response was received");
+        } else {
+          // Something happened in setting up the request that triggered an Error
+          setError("An error occurred while setting up the request");
+        }
+      } else {
+        // Something happened in setting up the request that triggered an Error
+        setError("An unexpected error occurred");
+      }
     } finally {
       setLoading(false);
     }
