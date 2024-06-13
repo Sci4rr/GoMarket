@@ -4,6 +4,7 @@ import (
     "bytes"
     "encoding/json"
     "fmt"
+    "log"
     "net/http"
     "net/http/httptest"
     "os"
@@ -22,45 +23,63 @@ type Product struct {
 var products []Product
 
 func init() {
-    // Load .env file if exists. Not critical if it fails, hence no need to check error
-    _ = godotenv.Load()
+    if err := godotenv.Load(); err != nil {
+        log.Println("No .env file found")
+    }
 }
 
 func addProductHandler(w http.ResponseWriter, r *http.Request) {
     var newProduct Product
-    err := json.NewDecoder(r.Body).Decode(&newProduct)
+    err := json.NewDecoder(r.Body).Decode(&newToproduct)
     if err != nil {
-        http.Error(w, fmt.Sprintf("Error decoding product data: %v", err), http.StatusBadRequest)
+        errMsg := fmt.Sprintf("Error decoding product data: %v", err)
+        log.Println(errMsg)
+        http.Error(w, errMsg, http.StatusBadRequest)
         return
     }
     products = append(products, newProduct)
     w.WriteHeader(http.StatusCreated)
-    _ = json.NewEncoder(w).Encode(newProduct) // Returning the added product could be useful for the client.
+    if err = json.NewEncoder(w).Encode(newProduct); err != nil {
+        errMsg := fmt.Sprintf("Error returning the added product data: %v", err)
+        log.Println(errMsg)
+        http.Error(w, errMsg, http.StatusInternalServerError)
+    }
 }
 
-func updateProductFHandler(w http.ResponseWriter, r *http.Request) {
+func updateProductHandler(w http.ResponseWriter, r *http.Request) {
     params := mux.Vars(r)
     id := params["id"]
 
     var updatedProduct Product
     if err := json.NewDecoder(r.Body).Decode(&updatedProduct); err != nil {
-        http.Error(w, fmt.Sprintf("Error decoding product data: %v", err), http.StatusBadRequest)
+        errMsg := fmt.Sprintf("Error decoding updated product data: %v", err)
+        log.Println(errMsg)
+        http.Error(w, errMsg, http.StatusBadRequest)
         return
     }
 
+    found := false
     for index, item := range products {
         if item.ID == id {
-            products[index] = updatedProduct // Update the product in the slice
-            if err := json.NewEncoder(w).Encode(updatedProduct); err != nil {
-                http.Error(w, fmt.Sprintf("Error encoding updated product: %v", err), http.StatusInternalServerError)
-                return
-            }
-            return
+            products[index] = updatedProduct // Update the product
+            found = true
+            break
         }
     }
 
-    // If we didn't find the product to update
-    http.NotFound(w, r)
+    if !found {
+        errMsg := "Product not found"
+        log.Println(errMsg)
+        http.NotFound(w, r)
+        return
+    }
+
+    if err := json.NewEncoder(w).Encode(updatedProduct); err != nil {
+        errMsg := fmt.Sprintf("Error encoding updated product: %v", err)
+        log.Println(errMsg)
+        http.Error(w, errMsg, http.StatusInternalServerError)
+        return
+    }
 }
 
 func deleteProductHandler(w http.ResponseWriter, r *http.Request) {
@@ -73,6 +92,8 @@ func deleteProductHandler(w http.ResponseWriter, r *http.Request) {
             return
         }
     }
+    errMsg := "Product to delete not found"
+    log.Println(errMsg)
     http.NotFound(w, r)
 }
 
@@ -85,9 +106,9 @@ func TestProductManagement(t *testing.T) {
     newProduct := Product{ID: "1", Name: "Test Product", Price: 9.99}
     productBytes, err := json.Marshal(newProduct)
     if err != nil {
-       t.Fatalf("Failed to marshal new product: %v", err)
+        t.Fatalf("Failed to marshal new product: %v", err)
     }
-    req, _ := http.NewRequest("POST", "/product", bytes.NewBuffer(product.Printf("%s", productBytes)))
+    req, _ := http.NewRequest("POST", "/product", bytes.NewBuffer(productBytes))
     response := httptest.NewRecorder()
     r.ServeHTTP(response, req)
 
